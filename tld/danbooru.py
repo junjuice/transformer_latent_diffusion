@@ -280,4 +280,4 @@ def get_conditions(batch: dict, is_unconditional=False):
     embeddings = torch.nn.utils.rnn.pad_sequence(embeddings, batch_first=True, padding_value=0.)
     if is_unconditional:
         embeddings = owl_embeds["uncond"].expand(embeddings.shape)
-    return {"text_emb": embeddings}
+    return embeddings

@@ -6,6 +6,7 @@ from webdataset.handlers import warn_and_continue as handler
 import json
 import tld.danbooru as db 
 from fractions import Fraction
+import os
 
 
 def identity(x):
@@ -63,8 +64,9 @@ def setup_data(bsz, img_size, dataset_path):
         *[p[1] for p in preprocessors], handler=handler
     ).map(map_fn)
     # SETUP DATALOADER
+    cpus = os.cpu_count()
     dataloader = DataLoader(
-        dataset, batch_size=bsz, num_workers=8, pin_memory=True,
+        dataset, batch_size=bsz, num_workers=min(cpus, 8), pin_memory=True,
         collate_fn=identity
     )
 

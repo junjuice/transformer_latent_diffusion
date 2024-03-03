@@ -88,28 +88,30 @@ class ModelConfig:
     prev_path: str = "models/previewer.safetensors"
     webdataset_path: str = "https://huggingface.co/datasets/KBlueLeaf/danbooru2023-webp-2Mpixel/resolve/main/images/data-{}.tar"
 
-@dataclass
-class DataConfig:
-    latent_path: str #path to a numpy file containing latents
-    text_emb_path: str
-    val_path: str
-
-def main(config: ModelConfig, dataconfig: DataConfig):
+def main(config: ModelConfig):
     """main train loop to be used with accelerate"""
 
-    accelerator = Accelerator(mixed_precision="fp16", log_with="wandb")
+    accelerator = Accelerator(mixed_precision="bf16", log_with="wandb")
 
     accelerator.print("Loading Data:")
     webdataset_paths = [config.webdataset_path.format(str(i).rjust(4, "0")) for i in range(1128)]
-    train_loader = setup_data(config.batch_size, config.image_size, webdataset_paths)
+    train_loader = setup_data(config.batch_size, 768, webdataset_paths)
     
+    print("Loading EffnetEncoder...")
     effnet = EfficientNetEncoder()
-    effnet_checkpoint = safetensors.safe_open(config.eff_path)
+    effnet_checkpoint = {}
+    with safetensors.safe_open(config.eff_path, framework="pt", device="cpu") as f:
+        for key in f.keys():
+            effnet_checkpoint[key] = f.get_tensor(key)
     effnet.load_state_dict(effnet_checkpoint if 'state_dict' not in effnet_checkpoint else effnet_checkpoint['state_dict'])
     effnet.eval().requires_grad_(False)
 
+    print("Loading Previewer...")
     previewer = Previewer()
-    previewer_checkpoint = safetensors.safe_open(config.prev_path)
+    previewer_checkpoint = {}
+    with safetensors.safe_open(config.prev_path, framework="pt", device="cpu") as f:
+        for key in f.keys():
+            previewer_checkpoint[key] = f.get_tensor(key)
     previewer.load_state_dict(previewer_checkpoint if 'state_dict' not in previewer_checkpoint else previewer_checkpoint['state_dict'])
     previewer.eval().requires_grad_(False)
 
@@ -117,6 +119,7 @@ def main(config: ModelConfig, dataconfig: DataConfig):
         effnet = effnet.to(accelerator.device)
         previewer = previewer.to(accelerator.device)
    
+    print("Setup model and optimizer...")
     model = Denoiser(
         in_dim=config.n_channels, 
         image_size=config.image_size, 
@@ -127,7 +130,6 @@ def main(config: ModelConfig, dataconfig: DataConfig):
         dropout=config.dropout,
         n_layers=config.n_layers
     )
-    
     
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
@@ -159,17 +161,17 @@ def main(config: ModelConfig, dataconfig: DataConfig):
     project_name="ntt_diffusion",
     config=asdict(config)
     )
-
-    accelerator.print(count_parameters(model))
-    accelerator.print(count_parameters_per_layer(model))
+    drop = nn.Dropout1d(0.15)
+    accelerator.print("Parameters:", count_parameters(model))
 
     ### Train:
     for i in range(1, config.n_epoch+1):
         accelerator.print(f'epoch: {i}')            
 
-        for batch in tqdm(train_loader):
-            x = batch["images"]
-            y = db.get_conditions(batch)
+        for _ in tqdm(range(train_loader.length//config.batch_size)):
+            batch = next(train_loader)
+            x = batch["images"].to(accelerator.device)
+            y = db.get_conditions(batch).to(accelerator.device)
 
             x = diffuser.effnet(x)
             noise_level = torch.tensor(np.random.beta(config.beta_a, config.beta_b, len(x)), device=accelerator.device)
@@ -180,17 +182,15 @@ def main(config: ModelConfig, dataconfig: DataConfig):
 
             x_noisy = x_noisy.float()
             noise_level = noise_level.float()
-            label = y
 
-            prob = 0.15
-            mask = torch.rand(y.size(0), device=accelerator.device) < prob
-            label[:, mask, :] = torch.zeros_like(label[:, mask, :]) # OR replacement_vector
+            label = y
+            label = drop(label)
 
             if global_step % config.save_and_eval_every_iters == 0:
                 accelerator.wait_for_everyone()
                 if accelerator.is_main_process:
                     ##eval and saving:
-                    out = eval_gen(diffuser=diffuser, labels=y)
+                    out = eval_gen(diffuser=diffuser, batch=batch)
                     out.save('img.jpg')
                     accelerator.log({f"step: {global_step}": wandb.Image("img.jpg")})
                     
@@ -226,5 +226,5 @@ def main(config: ModelConfig, dataconfig: DataConfig):
             global_step += 1
     accelerator.end_training()
             
-# args = (config, data_path, val_path)
-# notebook_launcher(training_loop)
+if __name__ == "__main__":
+    main(ModelConfig())
