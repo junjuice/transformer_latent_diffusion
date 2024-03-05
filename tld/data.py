@@ -43,7 +43,7 @@ class MultiFilter():
         except Exception:
             return False
     
-def setup_data(bsz, img_size, dataset_path, worker_limit):
+def setup_data(bsz, img_size, dataset_path, worker_limit, length=6_500_000):
     # SETUP DATASET
     dataset_path = dataset_path
     db.setup()
@@ -70,6 +70,6 @@ def setup_data(bsz, img_size, dataset_path, worker_limit):
         collate_fn=identity
     )
 
-    dataloader_iterator = Bucketeer(dataloader, density=img_size ** 2, factor=32, interpolate_nearest=False, length=6_500_000)
+    dataloader_iterator = Bucketeer(dataloader, density=img_size ** 2, factor=32, interpolate_nearest=False, length=length)
 
     return dataloader_iterator

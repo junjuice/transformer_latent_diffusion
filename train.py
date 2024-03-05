@@ -98,8 +98,12 @@ def main(config: ModelConfig = ModelConfig()):
     accelerator = Accelerator(mixed_precision="bf16", log_with="wandb")
 
     accelerator.print("Loading Data:")
-    webdataset_paths = [config.webdataset_path.format(str(i).rjust(4, "0")) for i in range(1128)]
-    train_loader = setup_data(config.batch_size, config.original_size, webdataset_paths, config.worker_limit)
+    world_size = accelerator.num_processes
+    rank = accelerator.process_index
+    chunk_size = 1128 // world_size
+    chunk = range(chunk_size*rank, chunk_size*(rank+1))
+    webdataset_paths = [config.webdataset_path.format(str(i).rjust(4, "0")) for i in chunk]
+    train_loader = setup_data(config.batch_size, config.original_size, webdataset_paths, config.worker_limit, 6_500_000//world_size)
 
     
     print("Loading EffnetEncoder...")
