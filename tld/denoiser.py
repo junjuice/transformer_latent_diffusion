@@ -1,5 +1,6 @@
 """transformer based denoiser"""
 
+import math
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -85,6 +86,15 @@ class DenoiserTransBlock(nn.Module):
 
 
     def forward(self, x: torch.Tensor, cond: torch.Tensor):
+        b, c, h, w = x.shape
+        pad_size = (
+            0,
+            math.ceil(w/self.patch_size)*self.patch_size-w,
+            0,
+            math.ceil(h/self.patch_size)*self.patch_size-h
+        )
+        pad = nn.ZeroPad2d(pad_size)
+        x = pad(x)
         B, C, H, W = x.shape
         x = self.patchify_and_embed(x)
         #pos_enc = self.precomputed_pos_enc[:x.size(1)].expand(x.size(0), -1)
@@ -99,6 +109,7 @@ class DenoiserTransBlock(nn.Module):
                 p1=self.patch_size, 
                 p2=self.patch_size
             )(x)
+        x = x[:, :, :h, :w]
         return x
 
 class Denoiser(nn.Module):
@@ -140,6 +151,7 @@ class Denoiser(nn.Module):
         self.norm = nn.LayerNorm(self.embed_dim)
 
     def forward(self, x, noise_level, cond):
+
 
         noise_level = self.fourier_feats(noise_level)[:, None, :]
 
