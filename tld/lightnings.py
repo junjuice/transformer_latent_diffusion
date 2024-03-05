@@ -97,7 +97,7 @@ class DenoiserPL(pl.LightningModule):
         return dataloader
 
     def training_step(self, batch, batch_idx):
-        batch = next(self.bucket)
+        batch = self.bucket.next(batch)
         x, c = batch["images"], batch["embeddings"]
         c = self.drop(c)
         x_latent = self.diffusion.effnet(x)
