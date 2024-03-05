@@ -11,7 +11,7 @@ from tld.denoiser import Denoiser
 from tld.diffusion import DiffusionGenerator
 from tld.effnet import EfficientNetEncoder
 from tld.previewer import Previewer
-from tld.data import setup_data
+from tld.data import setup_data_2
 from train import ModelConfig
 
 class DenoiserPL(pl.LightningModule):
@@ -86,14 +86,13 @@ class DenoiserPL(pl.LightningModule):
         chunk = range(chunk_size*self.trainer.global_rank, chunk_size*(self.trainer.global_rank+1))
         webdataset_paths = [self.config.webdataset_path.format(str(i).rjust(4, "0")) for i in chunk]
         #webdataset_paths = "file:F:/crawl2/data-0000.tar"
-        dataloader, bucket = setup_data(
+        dataloader = setup_data_2(
             bsz=self.config.batch_size,
             img_size=self.config.original_size,
             dataset_path=webdataset_paths,
             worker_limit=self.config.worker_limit,
             length=length
         )
-        self.bucket = bucket
         return dataloader
 
     def training_step(self, batch, batch_idx):
