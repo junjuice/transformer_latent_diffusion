@@ -57,10 +57,13 @@ class Bucketeer():
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def next(self, elements):
+        first = True
         batch = self.get_available_batch()
         while batch is None:
-            elements = next(self.iterator)
+            if not first:
+                elements = next(self.iterator)
+            first = False
             for dct in elements:
                 img = dct['images']
                 size = self.get_closest_size(img)
