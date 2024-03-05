@@ -100,6 +100,8 @@ def main(config: ModelConfig = ModelConfig()):
     accelerator.print("Loading Data:")
     webdataset_paths = [config.webdataset_path.format(str(i).rjust(4, "0")) for i in range(1128)]
     train_loader = setup_data(config.batch_size, config.original_size, webdataset_paths, config.worker_limit)
+    train_loader = Bucketeer(train_loader, config.batch_size, density=config.image_size ** 2, factor=32, interpolate_nearest=False, length=6_500_000)
+
     
     print("Loading EffnetEncoder...")
     effnet = EfficientNetEncoder()
@@ -159,10 +161,9 @@ def main(config: ModelConfig = ModelConfig()):
         diffuser = DiffusionGenerator(ema_model, effnet=effnet, previewer=previewer, device=accelerator.device, model_dtype=torch.bfloat16)
 
     accelerator.print("model prep")
-    model, train_loader, optimizer = accelerator.prepare(
-        model, train_loader, optimizer
+    model, optimizer = accelerator.prepare(
+        model, optimizer
     )
-    train_loader = Bucketeer(train_loader, config.batch_size, density=config.image_size ** 2, factor=32, interpolate_nearest=False, length=6_500_000)
 
     accelerator.init_trackers(
         project_name="ntt_diffusion",
