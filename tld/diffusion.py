@@ -80,10 +80,13 @@ class DiffusionGenerator:
     def initialize_image(self, seeds, num_imgs, img_size, seed):
         """Initialize the seed tensor."""
         if seeds is None:
-            generator = torch.Generator(device=self.device)
+            if self.device.type == "xla":
+                device = "cpu"
+            else:
+                device = self.device
+            generator = torch.Generator(device=device)
             generator.manual_seed(seed)
-            return torch.randn(num_imgs, 16, img_size, img_size, dtype=self.model_dtype,
-                               device=self.device, generator=generator)
+            return torch.randn(num_imgs, 16, img_size, img_size, dtype=self.model_dtype, generator=generator).to(self.device)
         else:
             return seeds.to(self.device, self.model_dtype)
 
