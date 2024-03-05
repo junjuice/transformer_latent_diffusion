@@ -43,7 +43,7 @@ class MultiFilter():
         except Exception:
             return False
     
-def setup_data(bsz, img_size, dataset_path):
+def setup_data(bsz, img_size, dataset_path, worker_limit):
     # SETUP DATASET
     dataset_path = dataset_path
     db.setup()
@@ -66,7 +66,7 @@ def setup_data(bsz, img_size, dataset_path):
     # SETUP DATALOADER
     cpus = os.cpu_count()
     dataloader = DataLoader(
-        dataset, batch_size=bsz, num_workers=min(cpus, 8), pin_memory=True,
+        dataset, batch_size=bsz, num_workers=min(cpus, worker_limit), pin_memory=True,
         collate_fn=identity
     )
 

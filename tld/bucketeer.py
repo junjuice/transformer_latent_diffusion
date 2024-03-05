@@ -2,11 +2,14 @@ import torch
 import torchvision
 import numpy as np
 import math
+from fractions import Fraction
+
 
 class Bucketeer():
     def __init__(self, dataloader, density=256*256, factor=8, ratios=[1/1, 1/2, 1/3, 2/3, 3/4, 1/5, 2/5, 3/5, 4/5, 1/6, 5/6, 9/16], reverse_list=True, randomize_p=0.3, randomize_q=0.2, crop_mode='random', p_random_ratio=0.0, interpolate_nearest=False, length=None):
         assert crop_mode in ['center', 'random', 'smart']
         self.crop_mode = crop_mode
+        ratios = [float(Fraction(f)) for f in ratios]
         self.ratios = ratios
         if reverse_list:
             for r in list(ratios):

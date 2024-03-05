@@ -26,20 +26,21 @@ from tld.previewer import Previewer
 from tld.data import setup_data
 import tld.danbooru as db
 
+import gc
 
 
 def eval_gen(diffuser: DiffusionGenerator, batch):
     class_guidance=4.5
     seed=10
-    out, _ = diffuser.generate( batch,
-                                class_guidance=class_guidance,
-                                seed=seed,
-                                n_iter=40,
-                                exponent=1,
-                            )
+    out, _ = diffuser.generate( 
+        batch=batch,
+        class_guidance=class_guidance,
+        seed=seed,
+        n_iter=2, #40
+        exponent=1,
+    )
 
     out: Image.Image = to_pil((vutils.make_grid((out+1)/2, nrow=8, padding=4)).float().clip(0, 1))
-    out.save(f'emb_val_cfg:{class_guidance}_seed:{seed}.png')
 
     return out
 
@@ -61,6 +62,7 @@ def update_ema(ema_model, model, alpha=0.999):
 
 @dataclass
 class ModelConfig:
+    original_size: int = 768
     cond_dim: int = 512
     embed_dim: int = 512
     n_layers: int = 6
@@ -68,10 +70,10 @@ class ModelConfig:
     scaling_factor: int = 8
     patch_size: int = 2
     image_size: int = 32 
-    n_channels: int = 4
+    n_channels: int = 16
     dropout: float = 0
     mlp_multiplier: int = 4
-    batch_size: int = 128
+    batch_size: int = 16
     class_guidance: int = 3
     lr: float = 3e-4
     n_epoch: int = 100
@@ -87,6 +89,7 @@ class ModelConfig:
     eff_path: str = "models/effnet_encoder.safetensors"
     prev_path: str = "models/previewer.safetensors"
     webdataset_path: str = "https://huggingface.co/datasets/KBlueLeaf/danbooru2023-webp-2Mpixel/resolve/main/images/data-{}.tar"
+    worker_limit: int = 0
 
 def main(config: ModelConfig):
     """main train loop to be used with accelerate"""
@@ -95,7 +98,7 @@ def main(config: ModelConfig):
 
     accelerator.print("Loading Data:")
     webdataset_paths = [config.webdataset_path.format(str(i).rjust(4, "0")) for i in range(1128)]
-    train_loader = setup_data(config.batch_size, 768, webdataset_paths)
+    train_loader = setup_data(config.batch_size, config.original_size, webdataset_paths, config.worker_limit)
     
     print("Loading EffnetEncoder...")
     effnet = EfficientNetEncoder()
@@ -105,6 +108,7 @@ def main(config: ModelConfig):
             effnet_checkpoint[key] = f.get_tensor(key)
     effnet.load_state_dict(effnet_checkpoint if 'state_dict' not in effnet_checkpoint else effnet_checkpoint['state_dict'])
     effnet.eval().requires_grad_(False)
+    del effnet_checkpoint
 
     print("Loading Previewer...")
     previewer = Previewer()
@@ -114,6 +118,7 @@ def main(config: ModelConfig):
             previewer_checkpoint[key] = f.get_tensor(key)
     previewer.load_state_dict(previewer_checkpoint if 'state_dict' not in previewer_checkpoint else previewer_checkpoint['state_dict'])
     previewer.eval().requires_grad_(False)
+    del previewer_checkpoint
 
     if accelerator.is_main_process:
         effnet = effnet.to(accelerator.device)
@@ -135,7 +140,7 @@ def main(config: ModelConfig):
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
 
     accelerator.print("Compiling model:")
-    model = torch.compile(model)
+    #model = torch.compile(model)
 
     if not config.from_scratch:
         accelerator.print("Loading Model:")
@@ -158,16 +163,19 @@ def main(config: ModelConfig):
     )
 
     accelerator.init_trackers(
-    project_name="ntt_diffusion",
-    config=asdict(config)
+        project_name="ntt_diffusion",
+        config=asdict(config)
     )
     drop = nn.Dropout1d(0.15)
     accelerator.print("Parameters:", count_parameters(model))
 
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
     ### Train:
     for i in range(1, config.n_epoch+1):
-        accelerator.print(f'epoch: {i}')            
-
+        accelerator.print(f'epoch: {i}')         
         for _ in tqdm(range(train_loader.length//config.batch_size)):
             batch = next(train_loader)
             x = batch["images"].to(accelerator.device)
@@ -187,18 +195,23 @@ def main(config: ModelConfig):
             label = drop(label)
 
             if global_step % config.save_and_eval_every_iters == 0:
+                gc.collect()
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
                 accelerator.wait_for_everyone()
                 if accelerator.is_main_process:
                     ##eval and saving:
-                    out = eval_gen(diffuser=diffuser, batch=batch)
-                    out.save('img.jpg')
-                    accelerator.log({f"step: {global_step}": wandb.Image("img.jpg")})
+                    with torch.autocast(accelerator.device.type, dtype=torch.bfloat16):
+                        out = eval_gen(diffuser=diffuser, batch=batch)
+                    out.save('step{}.jpg'.format(global_step))
+                    accelerator.log({f"step: {global_step}": wandb.Image('step{}.jpg'.format(global_step))}, step=global_step)
                     
                     opt_unwrapped = accelerator.unwrap_model(optimizer)
-                    full_state_dict = {'model_ema':ema_model.state_dict(),
-                                    'opt_state':opt_unwrapped.state_dict(),
-                                    'global_step':global_step
-                                    }
+                    full_state_dict = {
+                        'model_ema':ema_model.state_dict(),
+                        'opt_state':opt_unwrapped.state_dict(),
+                        'global_step':global_step
+                    }
                     accelerator.save(full_state_dict, config.model_name)
                     wandb.save(config.model_name)
 
@@ -208,15 +221,19 @@ def main(config: ModelConfig):
                 ###train loop:
                 optimizer.zero_grad()
 
-                with torch.autocast(torch.bfloat16):
+                with torch.autocast(accelerator.device.type, dtype=torch.bfloat16):
                     pred: torch.Tensor = model(x_noisy, noise_level.view(-1,1), label)
                 loss = loss_fn(pred, x)
-                accelerator.log({"train_loss":loss.item(), 
-                                 "pred_mean": pred.mean().item(), 
-                                 "pred_max": pred.max().item(), 
-                                 "pred_min": pred.min().item(), 
-                                 "step": global_step},
-                                   step=global_step)
+                accelerator.log(
+                    {
+                    "train_loss":loss.item(), 
+                    "pred_mean": pred.mean().item(), 
+                    "pred_max": pred.max().item(), 
+                    "pred_min": pred.min().item(), 
+                    "step": global_step
+                    },
+                    step=global_step
+                )
                 accelerator.backward(loss)
                 optimizer.step()
 

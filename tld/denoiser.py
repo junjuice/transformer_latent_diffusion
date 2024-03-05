@@ -64,7 +64,7 @@ class DenoiserTransBlock(nn.Module):
                                        nn.LayerNorm(patch_dim),
                                        nn.Linear(patch_dim, self.embed_dim),
                                        nn.LayerNorm(self.embed_dim)
-                                       )
+                                    )
         
         #self.pos_embed = nn.Embedding(seq_len, self.embed_dim)
         #self.register_buffer('precomputed_pos_enc', torch.arange(0, seq_len).long())
