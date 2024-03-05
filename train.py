@@ -92,7 +92,7 @@ class ModelConfig:
     webdataset_path: str = "https://huggingface.co/datasets/KBlueLeaf/danbooru2023-webp-2Mpixel/resolve/main/images/data-{}.tar"
     worker_limit: int = 0
 
-def main(config: ModelConfig):
+def main(config: ModelConfig = ModelConfig()):
     """main train loop to be used with accelerate"""
 
     accelerator = Accelerator(mixed_precision="bf16", log_with="wandb")
@@ -162,7 +162,7 @@ def main(config: ModelConfig):
     model, train_loader, optimizer = accelerator.prepare(
         model, train_loader, optimizer
     )
-    train_loader = Bucketeer(train_loader, density=config.image_size ** 2, factor=32, interpolate_nearest=False, length=6_500_000)
+    train_loader = Bucketeer(train_loader, config.batch_size, density=config.image_size ** 2, factor=32, interpolate_nearest=False, length=6_500_000)
 
     accelerator.init_trackers(
         project_name="ntt_diffusion",
