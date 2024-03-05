@@ -70,6 +70,4 @@ def setup_data(bsz, img_size, dataset_path, worker_limit):
         collate_fn=identity
     )
 
-    dataloader_iterator = Bucketeer(dataloader, density=img_size ** 2, factor=32, interpolate_nearest=False, length=6_500_000)
-
-    return dataloader_iterator
+    return dataloader

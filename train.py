@@ -19,6 +19,7 @@ import safetensors
 
 from diffusers import AutoencoderKL
 
+from tld.bucketeer import Bucketeer
 from tld.denoiser import Denoiser
 from tld.diffusion import DiffusionGenerator
 from tld.effnet import EfficientNetEncoder
@@ -27,7 +28,7 @@ from tld.data import setup_data
 import tld.danbooru as db
 
 import gc
-
+import os
 
 def eval_gen(diffuser: DiffusionGenerator, batch):
     class_guidance=4.5
@@ -36,7 +37,7 @@ def eval_gen(diffuser: DiffusionGenerator, batch):
         batch=batch,
         class_guidance=class_guidance,
         seed=seed,
-        n_iter=2, #40
+        n_iter=40,
         exponent=1,
     )
 
@@ -158,15 +159,17 @@ def main(config: ModelConfig):
         diffuser = DiffusionGenerator(ema_model, effnet=effnet, previewer=previewer, device=accelerator.device, model_dtype=torch.bfloat16)
 
     accelerator.print("model prep")
-    model, optimizer = accelerator.prepare(
-        model, optimizer
+    model, train_loader, optimizer = accelerator.prepare(
+        model, train_loader, optimizer
     )
+    train_loader = Bucketeer(train_loader, density=config.image_size ** 2, factor=32, interpolate_nearest=False, length=6_500_000)
 
     accelerator.init_trackers(
         project_name="ntt_diffusion",
         config=asdict(config)
     )
     drop = nn.Dropout1d(0.15)
+    accelerator.print("Training on:", accelerator.device)
     accelerator.print("Parameters:", count_parameters(model))
 
     gc.collect()
