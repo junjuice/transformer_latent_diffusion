@@ -13,10 +13,10 @@ class Config:
 trainer = pl.Trainer(
     max_steps=1_000_000_000,
     accelerator="auto",
-    precision="bf16-mixed",
+    precision="bf16-true",
     log_every_n_steps=1000,
     detect_anomaly=True,
-    logger=[WandbLogger(project="ntt_diffusion")]
+    logger=[WandbLogger("test-run-1", project="ntt_diffusion")]
 )
 
 with open("config.json") as f:
