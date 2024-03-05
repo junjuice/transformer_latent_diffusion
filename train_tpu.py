@@ -11,7 +11,7 @@ class Config:
             setattr(self, key, data[key])
 
 trainer = pl.Trainer(
-    max_epochs=10,
+    max_steps=1_000_000_000,
     accelerator="auto",
     precision="bf16-mixed",
     log_every_n_steps=1000,
