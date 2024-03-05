@@ -186,7 +186,7 @@ def main(config: ModelConfig = ModelConfig()):
         for _ in tqdm(range(train_loader.length//config.batch_size)):
             batch = next(train_loader)
             x = batch["images"].to(accelerator.device)
-            y = db.get_conditions(batch).to(accelerator.device)
+            y = batch["embeddings"].to(accelerator.device)
 
             x = diffuser.effnet(x)
             noise_level = torch.tensor(np.random.beta(config.beta_a, config.beta_b, len(x)), device=accelerator.device)

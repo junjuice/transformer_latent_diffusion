@@ -3,6 +3,7 @@ import torchvision
 import numpy as np
 import math
 from fractions import Fraction
+import tld.danbooru as db
 
 
 class Bucketeer():
@@ -79,4 +80,6 @@ class Bucketeer():
             batch = self.get_available_batch()
 
         out = {k:[batch[i][k] for i in range(len(batch))] for k in batch[0]}
-        return {k: torch.stack(o, dim=0) if isinstance(o[0], torch.Tensor) else o for k, o in out.items()}
+        out = {k: torch.stack(o, dim=0) if isinstance(o[0], torch.Tensor) else o for k, o in out.items()}
+        out["embeddings"] = db.get_conditions(out)
+        return out

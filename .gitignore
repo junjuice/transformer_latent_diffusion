@@ -4,3 +4,4 @@ __pycache__
 *.pt
 *.safetensors
 wandb
+lightning_logs
