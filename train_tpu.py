@@ -15,7 +15,6 @@ trainer = pl.Trainer(
     accelerator="auto",
     precision="bf16-true",
     log_every_n_steps=1000,
-    detect_anomaly=True,
     logger=[WandbLogger("test-run-1", project="ntt_diffusion")]
 )
 
