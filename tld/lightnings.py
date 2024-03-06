@@ -31,30 +31,23 @@ class DenoiserPL(pl.LightningModule):
             n_layers=config.n_layers
         )
 
-        effnet = EfficientNetEncoder()
+        self.effnet = EfficientNetEncoder()
         effnet_checkpoint = {}
         with safetensors.safe_open(config.eff_path, framework="pt", device="cpu") as f:
             for key in f.keys():
                 effnet_checkpoint[key] = f.get_tensor(key)
-        effnet.load_state_dict(effnet_checkpoint if 'state_dict' not in effnet_checkpoint else effnet_checkpoint['state_dict'])
-        effnet.eval().requires_grad_(False)
+        self.effnet.load_state_dict(effnet_checkpoint if 'state_dict' not in effnet_checkpoint else effnet_checkpoint['state_dict'])
+        self.effnet.eval().requires_grad_(False)
         del effnet_checkpoint
 
-        previewer = Previewer()
+        self.previewer = Previewer()
         previewer_checkpoint = {}
         with safetensors.safe_open(config.prev_path, framework="pt", device="cpu") as f:
             for key in f.keys():
                 previewer_checkpoint[key] = f.get_tensor(key)
-        previewer.load_state_dict(previewer_checkpoint if 'state_dict' not in previewer_checkpoint else previewer_checkpoint['state_dict'])
-        previewer.eval().requires_grad_(False)
+        self.previewer.load_state_dict(previewer_checkpoint if 'state_dict' not in previewer_checkpoint else previewer_checkpoint['state_dict'])
+        self.previewer.eval().requires_grad_(False)
         del previewer_checkpoint
-
-        self.diffusion = DiffusionGenerator(
-            model=self.denoiser,
-            effnet=effnet,
-            previewer=previewer,
-            device=self.device
-        )
 
         self.drop = nn.Dropout1d(0.15)
         self.save_hyperparameters()
@@ -66,8 +59,8 @@ class DenoiserPL(pl.LightningModule):
 
         x_noisy = noise_level.view(-1,1,1,1)*noise + signal_level.view(-1,1,1,1)*x
 
-        x_noisy = x_noisy.float()
-        noise_level = noise_level.float()
+        x_noisy = x_noisy.to(self.device, dtype=self.dtype)
+        noise_level = noise_level.to(self.device, dtype=self.dtype)
         return x_noisy, noise_level
     
     def forward(self, x, t, c):
@@ -100,9 +93,9 @@ class DenoiserPL(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, c = batch["images"], batch["embeddings"]
         c = self.drop(c)
-        x_latent = self.diffusion.effnet.to(self.device, dtype=self.dtype)(x)
+        x_latent = self.effnet(x)
         x_noisy, noise_level = self.random_noise(x_latent)
         pred = self.forward(x_noisy, noise_level.view(-1,1), c)
         loss = self.loss_fn(pred, x_latent)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, prog_bar=True)
         return loss
