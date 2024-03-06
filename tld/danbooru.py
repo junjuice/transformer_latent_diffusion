@@ -229,6 +229,8 @@ def get_tags(id, embedding: bool=False, formatting: bool=True, quality: bool=Tru
     try:
         post: Post = Post.get_by_id(id)
     except:
+        if embedding:
+            return None
         if formatting:
             return ""
     
