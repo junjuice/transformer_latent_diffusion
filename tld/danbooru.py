@@ -1,3 +1,4 @@
+import random
 import sqlite3
 import os
 import requests
@@ -230,8 +231,6 @@ def get_tags(id, embedding: bool=False, formatting: bool=True, quality: bool=Tru
     except:
         if formatting:
             return ""
-        else:
-            [""]
     
     quality_tag = get_quality_tag(post.score)
     
@@ -274,10 +273,56 @@ def get_conditions(batch: dict, is_unconditional=False):
     embeddings = []
     for x in batch["embeddings"]:
         try:
-            embeddings.append(torch.cat(x, dim=0))
+            embeddings.append(torch.cat(random.shuffle(x), dim=0))
         except:
             embeddings.append(owl_embeds["uncond"].unsqueeze(0))
     embeddings = torch.nn.utils.rnn.pad_sequence(embeddings, batch_first=True, padding_value=0.)
     if is_unconditional:
         embeddings = owl_embeds["uncond"].expand(embeddings.shape)
+    return embeddings
+
+def get_conditions_with_limit(batch: dict, is_unconditional=False, max_seq_len = 32):
+    embeddings = []
+    for x in batch["embeddings"]:
+        try:
+            embeddings.append(torch.cat(x, dim=0))
+        except:
+            embeddings.append(owl_embeds["uncond"].unsqueeze(0))
+    embeddings = torch.nn.utils.rnn.pad_sequence(embeddings, batch_first=True, padding_value=0.)
+    if is_unconditional:
+        embeddings = owl_embeds["uncond"].repeat(embeddings.shape[0], 1, 1)
+    if embeddings.shape[1] > max_seq_len:
+        embeddings = embeddings[:, max_seq_len, :]
+    else:
+        embeddings = torch.nn.ZeroPad1d((0, max_seq_len-embeddings.shape[1]))(embeddings)
+    return embeddings
+
+def get_conditions_with_limit(batch: dict, is_unconditional=False, max_seq_len = 32):
+    embeddings = []
+    for x in batch["embeddings"]:
+        try:
+            embeddings.append(torch.cat(x, dim=0))
+        except:
+            embeddings.append(owl_embeds["uncond"].unsqueeze(0))
+    embeddings = torch.nn.utils.rnn.pad_sequence(embeddings, batch_first=True, padding_value=0.)
+    if is_unconditional:
+        embeddings = owl_embeds["uncond"].repeat(embeddings.shape[0], 1, 1)
+    if embeddings.shape[1] > max_seq_len:
+        embeddings = embeddings[:, max_seq_len, :]
+    else:
+        embeddings = torch.nn.ZeroPad1d((0, max_seq_len-embeddings.shape[1]))(embeddings)
+    return embeddings
+
+def get_embeddings_with_limit(id, max_seq_len=32):
+    embeddings = get_embeddings(id)
+    if embeddings is None:
+        embeddings = [owl_embeds["uncond"], ]
+    random.shuffle(embeddings)
+    length = len(embeddings)
+    if length > max_seq_len:
+        embeddings = embeddings[:max_seq_len]
+    else:
+        for _ in range(max_seq_len-length):
+            embeddings.append(torch.zeros(1, 512))
+    embeddings = torch.cat(embeddings, dim=0)
     return embeddings

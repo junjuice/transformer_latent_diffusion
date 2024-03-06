@@ -12,6 +12,7 @@ from tld.diffusion import DiffusionGenerator
 from tld.effnet import EfficientNetEncoder
 from tld.previewer import Previewer
 from tld.data import setup_data_2
+import tld.danbooru as db
 from train import ModelConfig
 
 class DenoiserPL(pl.LightningModule):
@@ -81,6 +82,7 @@ class DenoiserPL(pl.LightningModule):
         return optimizer
 
     def train_dataloader(self):
+        db.setup()
         length = 6_500_000 // self.trainer.world_size // self.config.batch_size
         chunk_size = 1128 // self.trainer.world_size
         chunk = range(chunk_size*self.trainer.global_rank, chunk_size*(self.trainer.global_rank+1))
@@ -96,10 +98,9 @@ class DenoiserPL(pl.LightningModule):
         return dataloader
 
     def training_step(self, batch, batch_idx):
-        batch = self.bucket.next(batch)
         x, c = batch["images"], batch["embeddings"]
         c = self.drop(c)
-        x_latent = self.diffusion.effnet(x)
+        x_latent = self.diffusion.effnet.to(self.dtype)(x)
         x_noisy, noise_level = self.random_noise(x_latent)
         pred = self.forward(x_noisy, noise_level.view(-1,1), c)
         loss = self.loss_fn(pred, x_latent)

@@ -2,7 +2,7 @@
     "original_size": 768,
     "cond_dim": 512,
     "embed_dim": 1536,
-    "n_layers": 12,
+    "n_layers": 16,
     "clip_embed_size": 768,
     "scaling_factor": 8,
     "patch_size": 2,
@@ -10,7 +10,7 @@
     "n_channels": 16,
     "dropout": 0,
     "mlp_multiplier": 4,
-    "batch_size": 120,
+    "batch_size": 512,
     "class_guidance": 3,
     "lr": 3e-4,
     "n_epoch": 100,
@@ -26,5 +26,5 @@
     "eff_path": "models/effnet_encoder.safetensors",
     "prev_path": "models/previewer.safetensors",
     "webdataset_path": "https://huggingface.co/datasets/KBlueLeaf/danbooru2023-webp-2Mpixel/resolve/main/images/data-{}.tar",
-    "worker_limit": 8
+    "worker_limit": 0
 }

@@ -94,7 +94,7 @@ def setup_data_2(bsz, img_size, dataset_path, worker_limit, length=6_500_000):
                 SquarePad(img_size)
                 ]), 'images'),
             ("__key__", db.get_tags, "captions"),
-            ("__key__", db.get_embeddings, "embeddings")
+            ("__key__", db.get_embeddings_with_limit, "embeddings")
         ]
 
     map_fn = MapFn(preprocessors)
@@ -110,8 +110,7 @@ def setup_data_2(bsz, img_size, dataset_path, worker_limit, length=6_500_000):
     # SETUP DATALOADER
     cpus = os.cpu_count()
     dataloader = DataLoader(
-        dataset, batch_size=bsz, num_workers=min(cpus, worker_limit), pin_memory=True,
-        collate_fn=identity
+        dataset, batch_size=bsz, num_workers=min(cpus, worker_limit), pin_memory=True
     )
 
     return dataloader
