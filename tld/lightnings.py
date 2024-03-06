@@ -2,6 +2,8 @@ import lightning as pl
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 import numpy as np
 import safetensors
+import torchvision
+import wandb
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -50,7 +52,10 @@ class DenoiserPL(pl.LightningModule):
         del previewer_checkpoint
 
         self.drop = nn.Dropout1d(0.15)
+
         self.save_hyperparameters()
+
+        wandb.init(project="ntt-d")
 
     def random_noise(self, x):
         noise_level = torch.tensor(np.random.beta(self.config.beta_a, self.config.beta_b, len(x)), device=self.device)
@@ -68,7 +73,7 @@ class DenoiserPL(pl.LightningModule):
         return pred
     
     def loss_fn(self, pred, target):
-        return F.mse_loss(pred, target, reduce="mean")
+        return F.mse_loss(pred, target, reduction="mean")
     
     def configure_optimizers(self):
         optimizer = optim.Adam(self.denoiser.parameters(), lr=self.config.lr)
@@ -97,5 +102,19 @@ class DenoiserPL(pl.LightningModule):
         x_noisy, noise_level = self.random_noise(x_latent)
         pred = self.forward(x_noisy, noise_level.view(-1,1), c)
         loss = self.loss_fn(pred, x_latent)
-        self.log("train_loss", loss, prog_bar=True)
+        self.log("train/loss", loss.mean().item(), prog_bar=True)
+        wandb.log({
+            "train/loss": loss,
+            "train/step": self.global_step
+            })
+        if self.global_step % self.config.save_and_eval_every_iters == 0:
+            x = self.previewer(pred)
+            x = torchvision.utils.make_grid(
+                x[:16],
+                nrow=4
+            )
+            img = wandb.Image(x)
+            wandb.log({
+                "train/image": img
+            })
         return loss

@@ -26,5 +26,5 @@
     "eff_path": "models/effnet_encoder.safetensors",
     "prev_path": "models/previewer.safetensors",
     "webdataset_path": "https://huggingface.co/datasets/KBlueLeaf/danbooru2023-webp-2Mpixel/resolve/main/images/data-{}.tar",
-    "worker_limit": 0
+    "worker_limit": 8
 }

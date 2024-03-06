@@ -1,7 +1,6 @@
 import json
 
 import lightning as pl
-from lightning.pytorch.loggers import WandbLogger
 
 from tld.lightnings import DenoiserPL
 
@@ -15,7 +14,6 @@ trainer = pl.Trainer(
     accelerator="auto",
     precision="bf16-true",
     log_every_n_steps=1000,
-    logger=[WandbLogger("test-run-1", project="ntt_diffusion")]
 )
 
 with open("config.json") as f:
