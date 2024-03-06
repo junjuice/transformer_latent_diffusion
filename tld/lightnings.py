@@ -100,7 +100,7 @@ class DenoiserPL(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, c = batch["images"], batch["embeddings"]
         c = self.drop(c)
-        x_latent = self.diffusion.effnet.to(self.dtype)(x)
+        x_latent = self.diffusion.effnet.to(self.device, dtype=self.dtype)(x)
         x_noisy, noise_level = self.random_noise(x_latent)
         pred = self.forward(x_noisy, noise_level.view(-1,1), c)
         loss = self.loss_fn(pred, x_latent)

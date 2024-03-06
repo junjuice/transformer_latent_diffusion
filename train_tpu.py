@@ -6,7 +6,7 @@ from lightning.pytorch.loggers import WandbLogger
 from tld.lightnings import DenoiserPL
 
 class Config:
-    def __init__(self, data):
+    def __init__(self, data: dict):
         for key in data.keys():
             setattr(self, key, data[key])
 
