@@ -82,7 +82,7 @@ def setup_data(bsz, img_size, dataset_path, worker_limit, length=6_500_000):
 
     dataloader_iterator = Bucketeer(dataloader, density=img_size ** 2, factor=32, interpolate_nearest=False, length=length)
 
-    return dataloader, dataloader_iterator
+    return dataloader_iterator
 
 def setup_data_2(bsz, img_size, dataset_path, worker_limit, length=6_500_000):
     # SETUP DATASET

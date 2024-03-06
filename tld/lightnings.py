@@ -117,4 +117,5 @@ class DenoiserPL(pl.LightningModule):
             wandb.log({
                 "train/image": img
             })
+            torch.save(self.denoiser.state_dict(), "model.ckpt")
         return loss
