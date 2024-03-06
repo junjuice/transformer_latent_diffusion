@@ -60,7 +60,7 @@ def setup_data(bsz, img_size, dataset_path, worker_limit, length=6_500_000):
     preprocessors = [
             ('jpg;png;webp', torchvision.transforms.ToTensor(), 'images'),
             ("__key__", db.get_tags, "captions"),
-            ("__key__", db.get_embeddings, "embeddings")
+            ("__key__", db.get_embeddings_with_limit, "embeddings")
         ]
 
     map_fn = MapFn(preprocessors)

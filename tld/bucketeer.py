@@ -84,5 +84,4 @@ class Bucketeer():
 
         out = {k:[batch[i][k] for i in range(len(batch))] for k in batch[0]}
         out = {k: torch.stack(o, dim=0) if isinstance(o[0], torch.Tensor) else o for k, o in out.items()}
-        out["embeddings"] = db.get_conditions(out)
         return out
