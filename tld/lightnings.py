@@ -141,6 +141,13 @@ class DenoiserPL(pl.LightningModule):
             if self.global_step > self.config.ema_start and not self.ema_started:
                 self.ema = copy.deepcopy(self.denoiser).to(self.device)
                 self.ema_started = True
+                self.diffuser_ema = DiffusionGenerator(
+                    self.ema,
+                    effnet=self.effnet,
+                    previewer=self.previewer,
+                    device=self.device,
+                    model_dtype=self.dtype
+                    )
             with torch.no_grad():
                 pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
                 loss_ = self.loss_fn(pred, x_latent)
