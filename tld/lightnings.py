@@ -73,6 +73,7 @@ class DenoiserPL(pl.LightningModule):
         self.test_batch = None
 
         self.save_hyperparameters()
+        self.ema_started = False
 
         wandb.init(project="ntt-d")
 
@@ -136,6 +137,9 @@ class DenoiserPL(pl.LightningModule):
             })
         self.update_ema()
         if self.global_step % self.config.save_and_eval_every_iters == 0:
+            if self.global_step > self.config.ema_start and not self.ema_started:
+                self.ema = copy.deepcopy(self.denoiser)
+                self.ema_started = True
             with torch.no_grad():
                 pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
                 loss_ = self.loss_fn(pred, x_latent)
