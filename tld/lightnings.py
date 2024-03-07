@@ -135,10 +135,11 @@ class DenoiserPL(pl.LightningModule):
             "train/loss": loss,
             "train/step": self.global_step
             })
-        self.update_ema()
+        if self.ema_started:
+            self.update_ema()
         if self.global_step % self.config.save_and_eval_every_iters == 0:
             if self.global_step > self.config.ema_start and not self.ema_started:
-                self.ema = copy.deepcopy(self.denoiser)
+                self.ema = copy.deepcopy(self.denoiser).to(self.device)
                 self.ema_started = True
             with torch.no_grad():
                 pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
