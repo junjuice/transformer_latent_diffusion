@@ -57,7 +57,7 @@ class DenoiserPL(pl.LightningModule):
             self.ema,
             effnet=self.effnet,
             previewer=self.previewer,
-            dtype=self.dtype,
+            device=self.device,
             model_dtype=self.dtype
         )
 
