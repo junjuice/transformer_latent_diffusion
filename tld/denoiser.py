@@ -76,8 +76,8 @@ class DenoiserTransBlock(nn.Module):
                                             cond_dim=embed_dim,
                                             mlp_multiplier=self.mlp_multiplier,
                                             is_causal=False,
-                                            dropout_level=self.dropout,)
-                                            #mlp_class=MLPSepConv)
+                                            dropout_level=self.dropout,
+                                            mlp_class=MLPSepConv)
                                               for _ in range(self.n_layers)])
 
         self.out_proj = nn.Sequential(
