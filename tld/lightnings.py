@@ -10,7 +10,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch import optim
  
-from tld.denoiser import Denoiser
+from tld.denoiser import Denoiser, ModelEmaV3
 from tld.diffusion import DiffusionGenerator
 from tld.effnet import EfficientNetEncoder
 from tld.previewer import Previewer
@@ -33,7 +33,7 @@ class DenoiserPL(pl.LightningModule):
             dropout=config.dropout,
             n_layers=config.n_layers
         )
-        self.ema = copy.deepcopy(self.denoiser)
+        self.ema = ModelEmaV3(self.denoiser, decay=self.config.alpha, warmup=True)
 
         self.effnet = EfficientNetEncoder()
         effnet_checkpoint = {}
@@ -135,24 +135,36 @@ class DenoiserPL(pl.LightningModule):
             "train/loss": loss,
             "train/step": self.global_step
             })
-        if self.ema_started:
-            self.update_ema()
+        self.ema.update(
+            self.denoiser,
+            step=self.global_step
+        )
         if self.global_step % self.config.save_and_eval_every_iters == 0:
-            if self.global_step > self.config.ema_start and not self.ema_started:
-                self.ema = copy.deepcopy(self.denoiser).to(self.device)
-                self.ema_started = True
-                self.diffuser_ema = DiffusionGenerator(
-                    self.ema,
-                    effnet=self.effnet,
-                    previewer=self.previewer,
-                    device=self.device,
-                    model_dtype=self.dtype
-                    )
+            img = self.previewer(pred[:16])
+            img_re = self.previewer(x_latent[:16])
+            img = torchvision.utils.make_grid(
+                img,
+                nrow=4
+            )
+            img_re = torchvision.utils.make_grid(
+                img_re,
+                nrow=4
+            )
+            wandb.log({
+                "train/output": img,
+                "train/reconstruct": img_re
+            })
             with torch.no_grad():
                 pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
                 loss_ = self.loss_fn(pred, x_latent)
+                img = self.previewer(pred[:16])
+                img = torchvision.utils.make_grid(
+                    img,
+                    nrow=4
+                )
             wandb.log({
-                "test/loss": loss_
+                "test/loss": loss_,
+                "test/output": img
                 })
 
             self.diffuser_ema.device = self.device
