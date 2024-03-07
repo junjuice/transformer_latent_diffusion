@@ -85,7 +85,7 @@ class DiffusionGenerator:
                 device = self.device
             generator = torch.Generator(device=device)
             generator.manual_seed(seed)
-            return torch.randn(num_imgs, 16, img_size, img_size, dtype=self.model_dtype, generator=generator).to(self.device)
+            return torch.randn(num_imgs, 16, img_size, img_size, dtype=self.model_dtype, generator=generator, device=self.device)
         else:
             return seeds.to(self.device, self.model_dtype)
 
