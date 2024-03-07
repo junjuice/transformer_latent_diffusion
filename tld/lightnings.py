@@ -151,8 +151,8 @@ class DenoiserPL(pl.LightningModule):
                 nrow=4
             )
             wandb.log({
-                "train/output": img,
-                "train/reconstruct": img_re
+                "train/output": wandb.Image(img),
+                "train/reconstruct": wandb.Image(img_re)
             })
             with torch.no_grad():
                 pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
@@ -164,7 +164,7 @@ class DenoiserPL(pl.LightningModule):
                 )
             wandb.log({
                 "test/loss": loss_,
-                "test/output": img
+                "test/output": wandb.Image(img)
                 })
 
             self.diffuser_ema.device = self.device

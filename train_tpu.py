@@ -12,7 +12,7 @@ class Config:
 trainer = pl.Trainer(
     max_steps=1_000_000_000,
     accelerator="auto",
-    precision="bf16-true",
+    precision="bf16-mixed",
     log_every_n_steps=1000,
 )
 
