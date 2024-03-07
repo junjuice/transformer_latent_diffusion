@@ -130,7 +130,9 @@ class DenoiserPL(pl.LightningModule):
         if self.global_step % self.config.save_and_eval_every_iters == 0:
             pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
             loss = self.loss_fn(pred, x_latent)
-            self.log("test/loss", loss.mean().item(), prog_bar=True)
+            wandb.log({
+                "test/loss": loss
+                })
 
             self.diffuser.device = self.device
             self.diffuser.model_dtype = self.dtype
