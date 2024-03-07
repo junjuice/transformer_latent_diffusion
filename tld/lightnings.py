@@ -128,11 +128,14 @@ class DenoiserPL(pl.LightningModule):
         if self.global_step % self.config.ema_update_iter == 0:
             self.update_ema()
         if self.global_step % self.config.save_and_eval_every_iters == 0:
+            pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
+            loss = self.loss_fn(pred, x_latent)
+            self.log("test/loss", loss.mean().item(), prog_bar=True)
             x, _ = self.diffuser.generate(
                 batch=self.test_batch
             )
             wandb.log({
-                "train/image": [
+                "test/image": [
                     wandb.Image(x[i], caption=self.test_batch["caption"][i])
                     for i in range(16)
                 ]
