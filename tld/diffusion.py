@@ -24,7 +24,8 @@ class DiffusionGenerator:
                  exponent=1,
                  seeds=None,
                  noise_levels=None,
-                 use_ddpm_plus=True):
+                 use_ddpm_plus=True,
+                 ):
         """Generate images via reverse diffusion.
         if use_ddpm_plus=True uses Algorithm 2 DPM-Solver++(2M) here: https://arxiv.org/pdf/2211.01095.pdf
         else use ddim with alpha = 1-sigma

@@ -54,6 +54,14 @@ class DenoiserPL(pl.LightningModule):
         del previewer_checkpoint
 
         self.diffuser = DiffusionGenerator(
+            self.denoiser,
+            effnet=self.effnet,
+            previewer=self.previewer,
+            device=self.device,
+            model_dtype=self.dtype
+        )
+
+        self.diffuser_ema = DiffusionGenerator(
             self.ema,
             effnet=self.effnet,
             previewer=self.previewer,
@@ -114,6 +122,7 @@ class DenoiserPL(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         if not self.test_batch:
             self.test_batch = batch
+        self.denoiser.train()
         x, c = batch["images"], batch["embeddings"]
         c = self.drop(c)
         x_latent = self.effnet(x)
@@ -125,8 +134,7 @@ class DenoiserPL(pl.LightningModule):
             "train/loss": loss,
             "train/step": self.global_step
             })
-        if self.global_step % self.config.ema_update_iter == 0:
-            self.update_ema()
+        self.update_ema()
         if self.global_step % self.config.save_and_eval_every_iters == 0:
             with torch.no_grad():
                 pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
@@ -135,14 +143,26 @@ class DenoiserPL(pl.LightningModule):
                 "test/loss": loss_
                 })
 
-            self.diffuser.device = self.device
-            self.diffuser.model_dtype = self.dtype
-            x, _ = self.diffuser.generate(
+            self.diffuser_ema.device = self.device
+            self.diffuser_ema.model_dtype = self.dtype
+            img, _ = self.diffuser_ema.generate(
                 batch=self.test_batch
             )
             wandb.log({
                 "test/image": [
-                    wandb.Image(x[i], caption=self.test_batch["captions"][i])
+                    wandb.Image(img[i], caption=self.test_batch["captions"][i])
+                    for i in range(4)
+                ]
+            })
+
+            self.diffuser.device = self.device
+            self.diffuser.model_dtype = self.dtype
+            img, _ = self.diffuser.generate(
+                batch=self.test_batch
+            )
+            wandb.log({
+                "train/image": [
+                    wandb.Image(img[i], caption=self.test_batch["captions"][i])
                     for i in range(4)
                 ]
             })
