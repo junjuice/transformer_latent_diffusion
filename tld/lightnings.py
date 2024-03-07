@@ -1,3 +1,4 @@
+import copy
 import lightning as pl
 from lightning.pytorch.utilities.types import TRAIN_DATALOADERS
 import numpy as np
@@ -32,6 +33,7 @@ class DenoiserPL(pl.LightningModule):
             dropout=config.dropout,
             n_layers=config.n_layers
         )
+        self.ema = copy.deepcopy(self.denoiser)
 
         self.effnet = EfficientNetEncoder()
         effnet_checkpoint = {}
@@ -50,6 +52,14 @@ class DenoiserPL(pl.LightningModule):
         self.previewer.load_state_dict(previewer_checkpoint if 'state_dict' not in previewer_checkpoint else previewer_checkpoint['state_dict'])
         self.previewer.eval().requires_grad_(False)
         del previewer_checkpoint
+
+        self.diffuser = DiffusionGenerator(
+            self.ema,
+            effnet=self.effnet,
+            previewer=self.previewer,
+            dtype=self.dtype,
+            model_dtype=self.dtype
+        )
 
         self.drop = nn.Dropout1d(0.15)
 
@@ -95,6 +105,11 @@ class DenoiserPL(pl.LightningModule):
         )
         return dataloader
 
+    @torch.no_grad()
+    def update_ema(self):
+        for ema_param, model_param in zip(self.ema.parameters(), self.denoiser.parameters()):
+            ema_param.data.mul_(self.config.alpha).add_(model_param.data, alpha=1-self.config.alpha)
+
     def training_step(self, batch, batch_idx):
         x, c = batch["images"], batch["embeddings"]
         c = self.drop(c)
@@ -108,7 +123,9 @@ class DenoiserPL(pl.LightningModule):
             "train/step": self.global_step
             })
         if self.global_step % self.config.save_and_eval_every_iters == 0:
-            x = self.previewer(pred)
+            x, _ = self.diffuser.generate(
+                batch=batch
+            )
             x = torchvision.utils.make_grid(
                 x[:16],
                 nrow=4
@@ -118,4 +135,5 @@ class DenoiserPL(pl.LightningModule):
                 "train/image": img
             })
             torch.save(self.denoiser.state_dict(), "model.ckpt")
+            torch.save(self.ema.state_dict(), "ema.ckpt")
         return loss

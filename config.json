@@ -10,7 +10,7 @@
     "n_channels": 16,
     "dropout": 0,
     "mlp_multiplier": 4,
-    "batch_size": 64,
+    "batch_size": 32,
     "class_guidance": 3,
     "lr": 3e-4,
     "n_epoch": 100,

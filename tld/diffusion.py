@@ -18,7 +18,7 @@ class DiffusionGenerator:
                  n_iter=30,
                  batch=None, #embeddings to condition on
                  num_imgs=16,
-                 class_guidance=3,
+                 class_guidance=5,
                  seed=10,  #for reproducibility
                  img_size=16, #height, width of latent
                  exponent=1,
@@ -65,7 +65,7 @@ class DiffusionGenerator:
 
         x0_pred = self.pred_image(x_t, labels, next_noise, class_guidance)
 
-        x0_pred_img = self.previewer((x0_pred).to(self.model_dtype))[0].cpu()
+        x0_pred_img = self.previewer((x0_pred).to(self.model_dtype))
         return x0_pred_img, x0_pred
 
     def pred_image(self, noisy_image, labels, noise_level, class_guidance):
