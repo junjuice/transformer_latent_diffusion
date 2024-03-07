@@ -128,8 +128,9 @@ class DenoiserPL(pl.LightningModule):
         if self.global_step % self.config.ema_update_iter == 0:
             self.update_ema()
         if self.global_step % self.config.save_and_eval_every_iters == 0:
-            pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
-            loss = self.loss_fn(pred, x_latent)
+            with torch.no_grad():
+                pred = self.ema.forward(x_noisy, noise_level.view(-1,1), c)
+                loss = self.loss_fn(pred, x_latent)
             wandb.log({
                 "test/loss": loss
                 })
@@ -142,7 +143,7 @@ class DenoiserPL(pl.LightningModule):
             wandb.log({
                 "test/image": [
                     wandb.Image(x[i], caption=self.test_batch["captions"][i])
-                    for i in range(16)
+                    for i in range(4)
                 ]
             })
             torch.save(self.denoiser.state_dict(), "model.ckpt")

@@ -17,7 +17,7 @@ class DiffusionGenerator:
     def generate(self,
                  n_iter=30,
                  batch=None, #embeddings to condition on
-                 num_imgs=16,
+                 num_imgs=4,
                  class_guidance=5,
                  seed=10,  #for reproducibility
                  img_size=16, #height, width of latent
