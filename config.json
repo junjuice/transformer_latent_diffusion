@@ -15,6 +15,7 @@
     "lr": 3e-4,
     "n_epoch": 100,
     "alpha": 0.999,
+    "ema_update_iter": 100,
     "noise_embed_dims": 128,
     "diffusion_n_iter": 35,
     "from_scratch": true,

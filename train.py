@@ -79,6 +79,7 @@ class ModelConfig:
     lr: float = 3e-4
     n_epoch: int = 100
     alpha: float = 0.999
+    ema_update_iter: int = 100
     noise_embed_dims: int = 128
     diffusion_n_iter: int = 35
     from_scratch: bool = True

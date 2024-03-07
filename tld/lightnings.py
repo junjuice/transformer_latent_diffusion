@@ -125,6 +125,8 @@ class DenoiserPL(pl.LightningModule):
             "train/loss": loss,
             "train/step": self.global_step
             })
+        if self.global_step % self.config.ema_update_iter == 0:
+            self.update_ema()
         if self.global_step % self.config.save_and_eval_every_iters == 0:
             x, _ = self.diffuser.generate(
                 batch=self.test_batch
