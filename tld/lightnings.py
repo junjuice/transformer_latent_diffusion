@@ -62,6 +62,7 @@ class DenoiserPL(pl.LightningModule):
         )
 
         self.drop = nn.Dropout1d(0.15)
+        self.test_batch = None
 
         self.save_hyperparameters()
 
@@ -111,6 +112,8 @@ class DenoiserPL(pl.LightningModule):
             ema_param.data.mul_(self.config.alpha).add_(model_param.data, alpha=1-self.config.alpha)
 
     def training_step(self, batch, batch_idx):
+        if not self.test_batch:
+            self.test_batch = batch
         x, c = batch["images"], batch["embeddings"]
         c = self.drop(c)
         x_latent = self.effnet(x)
@@ -124,15 +127,13 @@ class DenoiserPL(pl.LightningModule):
             })
         if self.global_step % self.config.save_and_eval_every_iters == 0:
             x, _ = self.diffuser.generate(
-                batch=batch
+                batch=self.test_batch
             )
-            x = torchvision.utils.make_grid(
-                x[:16],
-                nrow=4
-            )
-            img = wandb.Image(x)
             wandb.log({
-                "train/image": img
+                "train/image": [
+                    wandb.Image(x[i], caption=self.test_batch["caption"][i])
+                    for i in range(16)
+                ]
             })
             torch.save(self.denoiser.state_dict(), "model.ckpt")
             torch.save(self.ema.state_dict(), "ema.ckpt")

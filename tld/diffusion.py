@@ -37,8 +37,7 @@ class DiffusionGenerator:
             lambdas = [np.log((1-sigma)/sigma) for sigma in noise_levels] #log snr
             hs = [lambdas[i] - lambdas[i-1] for i in range(1, len(lambdas))]
             rs = [hs[i-1]/hs[i] for i in range(1, len(hs))]
-        num_imgs = len(batch["captions"])
-        labels = torch.cat([db.get_conditions(batch), db.get_conditions(batch, True)])
+        labels = torch.cat([db.get_conditions(batch)[:num_imgs], db.get_conditions(batch, True)[:num_imgs],])
         x_t = self.initialize_image(seeds, num_imgs, img_size, seed)
         self.model.eval()
 
