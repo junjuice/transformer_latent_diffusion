@@ -139,7 +139,7 @@ class DenoiserPL(pl.LightningModule):
             )
             wandb.log({
                 "test/image": [
-                    wandb.Image(x[i], caption=self.test_batch["caption"][i])
+                    wandb.Image(x[i], caption=self.test_batch["captions"][i])
                     for i in range(16)
                 ]
             })
