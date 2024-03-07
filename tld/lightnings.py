@@ -33,7 +33,7 @@ class DenoiserPL(pl.LightningModule):
             dropout=config.dropout,
             n_layers=config.n_layers
         )
-        self.ema = ModelEmaV3(self.denoiser, decay=self.config.alpha, warmup=True)
+        self.ema = ModelEmaV3(self.denoiser, decay=self.config.alpha, use_warmup=True)
 
         self.effnet = EfficientNetEncoder()
         effnet_checkpoint = {}
