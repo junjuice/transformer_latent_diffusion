@@ -141,7 +141,7 @@ class DenoiserPL(pl.LightningModule):
         )
         if self.global_step % self.config.save_and_eval_every_iters == 0:
             img = self.previewer(pred[:16])
-            img_re = self.previewer(x_latent[:16])
+            img_re = self.previewer(x_noisy[:16])
             img = torchvision.utils.make_grid(
                 img,
                 nrow=4

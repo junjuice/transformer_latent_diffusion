@@ -18,7 +18,7 @@ class DiffusionGenerator:
                  n_iter=30,
                  batch=None, #embeddings to condition on
                  num_imgs=4,
-                 class_guidance=5,
+                 class_guidance=1,
                  seed=10,  #for reproducibility
                  img_size=16, #height, width of latent
                  exponent=1,
