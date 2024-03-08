@@ -1,8 +1,8 @@
 {
     "original_size": 768,
     "cond_dim": 512,
-    "embed_dim": 2560,
-    "n_layers": 6,
+    "embed_dim": 3072,
+    "n_layers": 4,
     "clip_embed_size": 768,
     "scaling_factor": 8,
     "patch_size": 2,
